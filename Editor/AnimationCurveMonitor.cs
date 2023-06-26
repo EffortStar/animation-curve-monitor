@@ -8,6 +8,7 @@ using HierarchyHelper;
 public class AnimationCurveMonitor : EditorWindow
 {
 	private Transform _monitorTransform = null;
+	HierarchyChangedDetector _detector = null;
 
 	void OnEnable ()
 	{
@@ -15,12 +16,12 @@ public class AnimationCurveMonitor : EditorWindow
 			return;
 
 		_monitorTransform = null;
-		HierarchyChangedDetector.OnHierarchyChange += MonitorGameObject;
 	}
 
 	void OnDisable()
 	{
-		HierarchyChangedDetector.OnHierarchyChange -= MonitorGameObject;
+		_detector.Dispose();
+		_detector = null;
 	}
 
 	string GetRelativeName( Transform t, bool includeSelf )
@@ -46,32 +47,27 @@ public class AnimationCurveMonitor : EditorWindow
 
 	string GetLastRelativeName( HierarchyChangedDetector.EChangeType type, HierarchyChangedDetector.HierarchySnapshot snapshot )
 	{
-		if( type == HierarchyChangedDetector.EChangeType.Renamed )
+		switch ( type )
 		{
-			return GetRelativeName( snapshot.me, false ) + snapshot.name;
-		}
-		else if( type == HierarchyChangedDetector.EChangeType.Parented )
-		{
-			if( snapshot.parent == null || !snapshot.parent.IsChildOf( _monitorTransform ) )
+			case HierarchyChangedDetector.EChangeType.Renamed:
+				return GetRelativeName( snapshot.me, false ) + snapshot.name;
+			case HierarchyChangedDetector.EChangeType.Parented:
+				if( snapshot.parent == null || !snapshot.parent.IsChildOf( _monitorTransform ) )
+					return string.Empty;
+
+				string path = GetRelativeName( snapshot.parent, true );
+				if( string.IsNullOrEmpty( path ) )
+					return snapshot.me.name;
+				else
+					return path + "/" + snapshot.me.name;
+			case HierarchyChangedDetector.EChangeType.Created:
+			case HierarchyChangedDetector.EChangeType.Deleted:
+			default:
 				return string.Empty;
-
-			string path = GetRelativeName( snapshot.parent, true );
-			if( string.IsNullOrEmpty( path ) )
-				return snapshot.me.name;
-			else
-				return path + "/" + snapshot.me.name;
 		}
-		else if( type == HierarchyChangedDetector.EChangeType.Created )
-		{
-		}
-		else if( type == HierarchyChangedDetector.EChangeType.Deleted )
-		{
-		}
-
-		return string.Empty;
 	}
 
-	void MonitorGameObject( HierarchyChangedDetector.EChangeType type, HierarchyChangedDetector.HierarchySnapshot snapshot )
+	void HandleHierarchyChange( HierarchyChangedDetector.EChangeType type, HierarchyChangedDetector.HierarchySnapshot snapshot )
 	{
 		if( _monitorTransform == null )
 			return;
@@ -153,7 +149,23 @@ public class AnimationCurveMonitor : EditorWindow
 
 	void OnGUI ()
 	{
-		_monitorTransform = EditorGUILayout.ObjectField( "Monitor", _monitorTransform, typeof( Transform ), true ) as Transform;
+		using var check = new EditorGUI.ChangeCheckScope();
+
+		_monitorTransform = EditorGUILayout.ObjectField(
+			"Monitor",
+			_monitorTransform,
+			typeof( Transform ),
+			true
+		) as Transform;
+
+		if (check.changed)
+		{
+			_detector?.Dispose();
+			if (_monitorTransform != null)
+			{
+				_detector = new HierarchyChangedDetector(_monitorTransform, HandleHierarchyChange);
+			}
+		}
 	}
 
 	[MenuItem("Tools/Animation Curve Monitor", false, 0)]

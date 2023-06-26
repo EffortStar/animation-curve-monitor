@@ -2,11 +2,11 @@
 using UnityEngine;
 using UnityEditor;
 using System;
+using UnityEditor.SceneManagement;
 
 namespace HierarchyHelper
 {
-	[InitializeOnLoad]
-	public static class HierarchyChangedDetector
+	public class HierarchyChangedDetector : IDisposable
 	{
 		public class HierarchySnapshot
 		{
@@ -23,18 +23,22 @@ namespace HierarchyHelper
 			Deleted
 		}
 
-		readonly static List<HierarchySnapshot> _hierarchySnapshots = null;
-		readonly static List<Transform> _hierarchyTransforms = null;
+		readonly List<HierarchySnapshot> _hierarchySnapshots = null;
+		readonly List<Transform> _hierarchyTransforms = null;
 
-		public static Action<EChangeType, HierarchySnapshot> OnHierarchyChange = ( EChangeType type, HierarchySnapshot snapshot ) => {};
+		readonly Action<EChangeType, HierarchySnapshot> _onHierarchyChange = ( EChangeType type, HierarchySnapshot snapshot ) => {};
+		readonly Transform _root;
 
-		static HierarchyChangedDetector()
+		public HierarchyChangedDetector(
+			Transform root,
+			Action<EChangeType, HierarchySnapshot> onHierarchyChange)
 		{
+			_root = root;
 			_hierarchySnapshots = new List<HierarchySnapshot>();
 			_hierarchyTransforms = new List<Transform>();
+			_onHierarchyChange = onHierarchyChange;
 
-			Transform[] all = GameObject.FindObjectsOfType<Transform>();
-			foreach( Transform t in all )
+			foreach( Transform t in GetHierarchy() )
 			{
 				HierarchySnapshot h = CreateSnapshot( t );
 				_hierarchySnapshots.Add( h );
@@ -43,6 +47,14 @@ namespace HierarchyHelper
 
 			EditorApplication.hierarchyChanged += HandleHierarchyChange;
 		}
+
+		public void Dispose()
+		{
+			EditorApplication.hierarchyChanged -= HandleHierarchyChange;
+		}
+
+		Transform[] GetHierarchy() =>
+			_root.GetComponentsInChildren<Transform>(includeInactive: true);
 
 		static HierarchySnapshot CreateSnapshot( Transform t )
 		{
@@ -53,7 +65,7 @@ namespace HierarchyHelper
 			return h;
 		}
 
-		static void HandleHierarchyChange()
+		void HandleHierarchyChange()
 		{
 			if (EditorApplication.isPlayingOrWillChangePlaymode) return;
 			bool found = false;
@@ -64,14 +76,14 @@ namespace HierarchyHelper
 				{
 					_hierarchySnapshots.RemoveAt( i );
 					_hierarchyTransforms.RemoveAt( i );
-					OnHierarchyChange( EChangeType.Deleted, h );
+					_onHierarchyChange( EChangeType.Deleted, h );
 					found = true;
 					continue;
 				}
 
 				else if( h.parent != h.me.parent )
 				{
-					OnHierarchyChange( EChangeType.Parented, h );
+					_onHierarchyChange( EChangeType.Parented, h );
 					h.parent = h.me.parent;
 					found = true;
 					break;
@@ -79,7 +91,7 @@ namespace HierarchyHelper
 
 				else if( h.name != h.me.name )
 				{
-					OnHierarchyChange( EChangeType.Renamed, h );
+					_onHierarchyChange( EChangeType.Renamed, h );
 					h.name = h.me.name;
 					found = true;
 					break;
@@ -90,8 +102,7 @@ namespace HierarchyHelper
 
 			if( !found )
 			{
-				Transform[] all = GameObject.FindObjectsOfType<Transform>();
-				foreach( Transform t in all )
+				foreach( Transform t in GetHierarchy() )
 				{
 					if( !_hierarchyTransforms.Contains( t ) )
 					{
@@ -99,7 +110,7 @@ namespace HierarchyHelper
 						_hierarchySnapshots.Add( h );
 						_hierarchyTransforms.Add( t );
 
-						OnHierarchyChange( EChangeType.Created, h );
+						_onHierarchyChange( EChangeType.Created, h );
 					}
 				}
 			}
