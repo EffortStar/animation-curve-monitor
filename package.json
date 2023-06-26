@@ -1,6 +1,6 @@
 {
   "name": "games.effortstar.animation-curve-monitor",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "displayName": "Animation Curve Monitor",
   "description": "Syncs animation curve names with object renames.",
   "unity": "2020.3",
