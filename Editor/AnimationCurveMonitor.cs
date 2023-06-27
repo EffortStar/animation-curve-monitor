@@ -20,8 +20,10 @@ public class AnimationCurveMonitor : EditorWindow
 
 	void OnDisable()
 	{
-		_detector.Dispose();
-		_detector = null;
+		if ( _detector != null ) {
+			_detector.Dispose();
+			_detector = null;
+		}
 	}
 
 	string GetRelativeName( Transform t, bool includeSelf )
