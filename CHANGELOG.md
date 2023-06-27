@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.1.1](https://github.com/EffortStar/animation-curve-monitor/compare/1.0.0...1.1.0) (2023-06-27)
+
+- Add meta file for changelog
+
 ## [1.1.0](https://github.com/EffortStar/animation-curve-monitor/compare/1.0.0...1.1.0) (2023-06-26)
 
 - Support working in prefab stage
