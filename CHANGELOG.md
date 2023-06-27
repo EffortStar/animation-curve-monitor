@@ -1,6 +1,10 @@
 # Changelog
 
-## [1.1.1](https://github.com/EffortStar/animation-curve-monitor/compare/1.0.0...1.1.0) (2023-06-27)
+## [1.1.2](https://github.com/EffortStar/animation-curve-monitor/compare/1.1.1...1.1.2) (2023-06-27)
+
+- Fix null reference exception
+
+## [1.1.1](https://github.com/EffortStar/animation-curve-monitor/compare/1.1.0...1.1.1) (2023-06-27)
 
 - Add meta file for changelog
 
